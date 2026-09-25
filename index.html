@@ -6,18 +6,19 @@
 /* GitHub 화면 전용: google.script.run 을 Apps Script 서버 호출(fetch)로 바꾼다. 서버 주소(api)·암호(k)는 처음 받은 링크로 한 번 열면 이 기기에 기억된다 */
 (function () {
   if (window.google && window.google.script) return;
+  var DEFAULT_API = 'https://script.google.com/macros/s/AKfycbxQSU5efF__vOXzOgF3W6q5GlxuWxIejzksuhUjnHTSj31Uz1x6A5y_s3svLcG16Ibh/exec';   /* 배포 주소 (암호 없이는 아무것도 안 알려줌) */
   var q = new URLSearchParams(location.search), api = q.get('api') || '', k = q.get('k') || '';
   try {
     if (api) localStorage.setItem('bb_api', api); else api = localStorage.getItem('bb_api') || '';
-    if (/\/dev$/.test(api)) { api = ''; localStorage.removeItem('bb_api'); }   /* 편집기 테스트용 주소는 버리고 다시 설정 안내 */
+    if (!api || /\/dev$/.test(api)) { api = DEFAULT_API; localStorage.setItem('bb_api', api); }   /* 편집기 테스트용 주소는 버리고 배포 주소로 */
     if (k) localStorage.setItem('bb_k', k); else k = localStorage.getItem('bb_k') || '';
     if (q.get('api') || q.get('k')) history.replaceState(null, '', location.pathname);   /* 주소창에서 암호 숨기기 */
   } catch (e) {}
   function send(fn, args, ok, fail) {
-    if (!api || !k) { showSetup(); fail && fail(new Error('설정 필요')); return; }
+    if (!k) { showSetup(); fail && fail(new Error('설정 필요')); return; }
     fetch(api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ rpc: fn, args: args.concat([k]) }) })
       .then(function (r) { return r.json(); })
-      .then(function (j) { if (j && j.__err) { if (/암호/.test(j.__err)) showSetup(); fail && fail(new Error(j.__err)); } else ok && ok(j); })
+      .then(function (j) { if (j && j.__err) { if (/암호/.test(j.__err)) { try { localStorage.removeItem('bb_k'); } catch (e) {} showSetup(); } fail && fail(new Error(j.__err)); } else ok && ok(j); })
       .catch(function (e) { fail && fail(e); });
   }
   function runner(ok, fail) {
@@ -33,8 +34,9 @@
     if (shown) return; shown = true;
     var d = document.createElement('div');
     d.setAttribute('style', 'position:fixed;inset:0;z-index:999;background:#0B0F1A;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:Pretendard,-apple-system,sans-serif');
-    d.innerHTML = '<div style="max-width:320px"><p style="font-size:18px;font-weight:700;margin:0 0 8px">처음 한 번만 설정이 필요해요</p><p style="color:#9aa3b2;font-size:14px;line-height:1.6;margin:0">Apps Script 편집기에서 <b style="color:#FFC83D">setupBoardKey</b> 를 실행하고, 로그에 나온 링크로 이 화면을 열어 주세요. 그 뒤로는 홈 화면 아이콘으로 바로 열려요.</p></div>';
+    d.innerHTML = '<form style="max-width:320px;width:100%"><p style="font-size:18px;font-weight:700;margin:0 0 8px">암호를 넣어 주세요</p><p style="color:#9aa3b2;font-size:14px;line-height:1.6;margin:0 0 16px">한 번 넣으면 이 기기가 기억해요 (setupBoardKey 로그의 k= 뒤 8글자)</p><input autocomplete="off" autocapitalize="off" style="width:100%;height:52px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;font-size:20px;text-align:center;letter-spacing:.2em;box-sizing:border-box" aria-label="암호"><button style="margin-top:12px;width:100%;height:52px;border:0;border-radius:999px;background:#FFC83D;color:#111;font-size:16px;font-weight:700">열기</button></form>';
     document.body.appendChild(d);
+    d.querySelector('form').addEventListener('submit', function (ev) { ev.preventDefault(); var v = d.querySelector('input').value.trim(); if (!v) return; try { localStorage.setItem('bb_k', v); } catch (e) {} location.reload(); });
   }
 })();
 </script>
