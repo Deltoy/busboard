@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head><link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><link rel="icon" type="image/png" href="icons/icon-192.png">
+<meta name="theme-color" content="#0B0F1A"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="버스 전광판">
+<script>
+/* GitHub 화면 전용: google.script.run 을 Apps Script 서버 호출(fetch)로 바꾼다. 서버 주소(api)·암호(k)는 처음 받은 링크로 한 번 열면 이 기기에 기억된다 */
+(function () {
+  if (window.google && window.google.script) return;
+  var q = new URLSearchParams(location.search), api = q.get('api') || '', k = q.get('k') || '';
+  try {
+    if (api) localStorage.setItem('bb_api', api); else api = localStorage.getItem('bb_api') || '';
+    if (k) localStorage.setItem('bb_k', k); else k = localStorage.getItem('bb_k') || '';
+    if (q.get('api') || q.get('k')) history.replaceState(null, '', location.pathname);   /* 주소창에서 암호 숨기기 */
+  } catch (e) {}
+  function send(fn, args, ok, fail) {
+    if (!api || !k) { showSetup(); fail && fail(new Error('설정 필요')); return; }
+    fetch(api, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ rpc: fn, args: args.concat([k]) }) })
+      .then(function (r) { return r.json(); })
+      .then(function (j) { if (j && j.__err) { if (/암호/.test(j.__err)) showSetup(); fail && fail(new Error(j.__err)); } else ok && ok(j); })
+      .catch(function (e) { fail && fail(e); });
+  }
+  function runner(ok, fail) {
+    return new Proxy({}, { get: function (_, name) {
+      if (name === 'withSuccessHandler') return function (f) { return runner(f, fail); };
+      if (name === 'withFailureHandler') return function (f) { return runner(ok, f); };
+      return function () { send(String(name), [].slice.call(arguments), ok, fail); };
+    } });
+  }
+  window.google = { script: { run: runner(null, null) } };
+  var shown = false;
+  function showSetup() {
+    if (shown) return; shown = true;
+    var d = document.createElement('div');
+    d.setAttribute('style', 'position:fixed;inset:0;z-index:999;background:#0B0F1A;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:Pretendard,-apple-system,sans-serif');
+    d.innerHTML = '<div style="max-width:320px"><p style="font-size:18px;font-weight:700;margin:0 0 8px">처음 한 번만 설정이 필요해요</p><p style="color:#9aa3b2;font-size:14px;line-height:1.6;margin:0">Apps Script 편집기에서 <b style="color:#FFC83D">setupBoardKey</b> 를 실행하고, 로그에 나온 링크로 이 화면을 열어 주세요. 그 뒤로는 홈 화면 아이콘으로 바로 열려요.</p></div>';
+    document.body.appendChild(d);
+  }
+})();
+</script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0F1A">
+<title>버스 전광판</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.css">
+<style>
+  :root{
+    /* 배경·유리 카드 톤 — 오너 확정 토큰 */
+    --bg:#0B0F1A; --bg2:#0d1220;
+    --glass:rgba(255,255,255,.055); --glass-line:rgba(255,255,255,.14);
+    --card:var(--glass); --card-line:var(--glass-line);
+    --ink:#ffffff; --dim:rgba(255,255,255,.58); --dim2:rgba(255,255,255,.36);
+    --amber:#FFC83D; --amber-ink:#241900; --amber-soft:rgba(255,200,61,.14); --amber-line:rgba(255,200,61,.4);
+    --green:#22FF88; --green-ink:#032213; --green-soft:rgba(34,255,136,.14); --green-line:rgba(34,255,136,.45);
+    --red:#ff4757; --red-soft:rgba(255,71,87,.14); --red-line:rgba(255,71,87,.35); --red-txt:#ff8a93;
+    --blue:#4c8bff; --blue-soft:rgba(76,139,255,.14); --blue-line:rgba(76,139,255,.35); --blue-txt:#8fb4ff;
+    --slate-soft:rgba(255,255,255,.08); --slate-line:rgba(255,255,255,.14);
+    --full:#ff8a3d; --full-soft:rgba(255,138,61,.16); --full-line:rgba(255,138,61,.4);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; overscroll-behavior-y:contain; }   /* 스크롤러: 브라우저 기본 당겨서 새로고침과 겹치지 않게 */
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',Roboto,sans-serif;
+    min-height:100vh; word-break:keep-all; overflow-x:hidden;
+    display:flex; justify-content:center;
+  }
+  .num{ font-variant-numeric:tabular-nums; }
+  /* 배경 블러 오브 — 은은한 앰버·그린, 저채도·저투명도 */
+  .glow{
+    position:fixed; top:-200px; right:-150px; width:500px; height:500px; border-radius:50%;
+    background:radial-gradient(circle,rgba(255,200,61,.16),rgba(255,200,61,0) 70%);
+    filter:blur(120px); pointer-events:none; z-index:0;
+  }
+  .glow2{
+    position:fixed; left:-170px; bottom:-230px; width:440px; height:440px; border-radius:50%;
+    background:radial-gradient(circle,rgba(34,255,136,.10),rgba(34,255,136,0) 70%);
+    filter:blur(110px); pointer-events:none; z-index:0;
+  }
+
+  .app{
+    position:relative; z-index:1; width:100%; max-width:440px;
+    min-height:100vh; display:flex; flex-direction:column;
+    padding-bottom:calc(88px + env(safe-area-inset-bottom));
+  }
+
+  /* 헤더 */
+  header{
+    display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+    padding:calc(16px + env(safe-area-inset-top)) 16px 6px;
+  }
+  .loc{ min-width:0; }
+  .locrow{ display:flex; align-items:center; gap:6px; color:var(--dim2); }
+  .locrow svg{ flex:none; }
+  .stop{
+    font-size:clamp(17px,4.6vw,21px); font-weight:800; color:var(--ink); line-height:1.25;
+    display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  .course{ font-size:12.5px; color:var(--dim2); margin-top:3px; font-weight:600; }
+  .hmeta{ display:flex; align-items:center; gap:8px; flex:none; }
+  .clockwrap{
+    display:flex; flex-direction:column; align-items:flex-end; gap:1px;
+    background:var(--glass); border:1px solid var(--glass-line); border-radius:14px;
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    padding:7px 12px; min-width:64px;
+  }
+  .clock{ font-size:15px; font-weight:800; color:var(--ink); }
+  .age{ font-size:9.5px; color:var(--dim2); font-weight:600; }
+  .refresh{
+    width:44px; height:44px; border-radius:14px; border:1px solid var(--glass-line); background:var(--glass);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer;
+    touch-action:manipulation; flex:none; padding:0;
+  }
+  .refresh svg{ transition:transform .5s ease; }
+  .refresh.spin svg{ animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* 본문 */
+  main{
+    flex:1; padding:6px 16px 8px; display:grid; gap:10px; align-content:start;
+    grid-template-columns:minmax(0,1fr);
+  }
+  main > *{ min-width:0; }
+  main.stale{ opacity:.5; filter:saturate(.4); }
+
+  /* 히어로 카드 — 유리질감: 반투명 채움 + blur(20px) + 얇은 밝은 테두리 */
+  .hero{
+    position:relative; border-radius:28px; padding:20px 20px 18px;
+    background:linear-gradient(165deg,rgba(255,255,255,.09),rgba(255,255,255,.02) 60%),rgba(13,18,32,.55);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--glass-line);
+    box-shadow:inset 0 1px 1px rgba(255,255,255,.07), 0 20px 50px rgba(0,0,0,.45);
+  }
+  .hero.go{ border-color:var(--green-line);
+    box-shadow:0 0 0 1px rgba(34,255,136,.22), 0 0 46px rgba(34,255,136,.28), inset 0 1px 1px rgba(255,255,255,.08); }
+  .hero.soon{ border-color:var(--amber-line);
+    box-shadow:0 0 0 1px rgba(255,200,61,.16), 0 0 42px rgba(255,200,61,.22), inset 0 1px 1px rgba(255,255,255,.08); }
+  .hero.full{ border-color:var(--full-line);
+    box-shadow:0 0 0 1px rgba(255,138,61,.15), 0 0 36px rgba(255,138,61,.18), inset 0 1px 1px rgba(255,255,255,.08); }
+
+  .herotop{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px; }
+  .pill{
+    display:inline-flex; align-items:center; gap:7px; font-size:clamp(13px,3.2vw,15px); font-weight:800;
+    border-radius:999px; padding:8px 14px; background:var(--slate-soft); color:var(--dim); border:1px solid var(--slate-line);
+  }
+  .pill .dot{ width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; }
+  .pill.go{ background:var(--green); color:var(--green-ink); border-color:var(--green); }
+  .pill.soon{ background:var(--amber); color:var(--amber-ink); border-color:var(--amber); }
+  .pill.full{ background:var(--full-soft); color:#ffd0ac; border-color:var(--full-line); }
+  .live{ display:flex; align-items:center; gap:4px; font-size:11px; color:var(--dim2); font-weight:700; flex:none; }
+
+  .lead{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .leadnum{ font-size:clamp(72px,18vw,100px); font-weight:900; line-height:.86; letter-spacing:-.03em; }
+  .leadlabel{ font-size:clamp(15px,3.6vw,19px); font-weight:800; color:var(--dim); }
+  .lead.none .leadnum{ font-size:clamp(26px,7vw,36px); color:var(--dim); font-weight:800; }
+
+  .who{ display:flex; align-items:center; gap:12px; margin-top:16px; }
+  .badge{
+    flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+    border-radius:14px; padding:7px 12px; min-width:64px;
+    background:var(--slate-soft); border:1px solid var(--slate-line);
+  }
+  .badge .btype{ font-size:10.5px; font-weight:800; opacity:.85; }
+  .badge .broute{ font-size:clamp(17px,4.4vw,21px); font-weight:900; line-height:1.1; }
+  .badge.green{ background:var(--green-soft); border-color:var(--green-line); color:#7cf0b6; }
+  .badge.blue{ background:var(--blue-soft); border-color:var(--blue-line); color:var(--blue-txt); }
+  .badge.red{ background:var(--red-soft); border-color:var(--red-line); color:var(--red-txt); }
+  .whotext{ min-width:0; font-size:clamp(15px,3.6vw,18px); font-weight:800; color:var(--ink);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .whotext span{ color:var(--dim); font-weight:700; }
+  .whotext .seatfull{ color:var(--full); }
+
+  .because{ margin-top:12px; font-size:clamp(12.5px,3vw,14.5px); color:var(--dim); display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  .because svg{ flex:none; opacity:.7; }
+  .because b{ color:var(--ink); font-weight:800; }
+  .because .sep{ color:var(--dim2); margin:0 1px; }
+
+  .progress{ margin-top:14px; height:6px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .progressfill{ height:100%; border-radius:999px; background:var(--amber); transition:width .4s ease; }
+  .hero.go .progressfill{ background:var(--green); }
+
+  /* 리스트 카드 — 히어로와 같은 유리질감 */
+  .line{
+    display:flex; align-items:center; gap:12px; border-radius:20px; padding:13px 14px;
+    background:var(--glass); border:1px solid var(--glass-line);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  }
+  .line.extra{ background:transparent; border-style:dashed; }
+  .line.wait{ opacity:.72; }
+  .badgeoutline{
+    flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0;
+    border-radius:12px; padding:5px 10px; min-width:56px; background:transparent;
+    border:1.5px solid var(--slate-line); color:var(--dim);
+  }
+  .badgeoutline .btype{ font-size:9px; font-weight:800; opacity:.85; }
+  .badgeoutline .broute{ font-size:clamp(14px,3.6vw,16px); font-weight:900; line-height:1.15; }
+  .badgeoutline.green{ border-color:var(--green-line); color:#7cf0b6; }
+  .badgeoutline.blue{ border-color:var(--blue-line); color:var(--blue-txt); }
+  .badgeoutline.red{ border-color:var(--red-line); color:var(--red-txt); }
+  .line .txt{ flex:1 1 0%; min-width:0; font-size:clamp(14px,3.4vw,16px); font-weight:800; color:var(--ink);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .line .txt span{ display:block; font-size:12px; color:var(--dim2); font-weight:600; margin-top:3px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .valpill{
+    flex:none; display:flex; align-items:baseline; gap:3px; font-size:clamp(15px,3.8vw,18px); font-weight:900;
+    padding:8px 13px; border-radius:999px; background:rgba(255,255,255,.07); color:var(--ink);
+  }
+  .valpill small{ font-size:11px; font-weight:800; color:var(--dim); }
+  .valpill.none{ font-size:12.5px; font-weight:700; color:var(--dim2); background:transparent; padding:8px 4px; }
+
+  /* 비어있음 / 로딩 / 에러 */
+  .empty{
+    padding:34px 20px; text-align:center; color:var(--dim); font-size:clamp(14px,3.2vw,16px);
+    background:var(--glass); border:1px solid var(--glass-line); border-radius:24px; line-height:1.7;
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  }
+  .empty .etitle{ color:var(--ink); font-size:clamp(16px,3.6vw,19px); font-weight:800; margin-bottom:6px; }
+  .bigbtn{
+    margin-top:16px; min-height:48px; padding:0 24px; font:inherit; font-size:15px; font-weight:800;
+    border:0; border-radius:999px; background:var(--amber); color:var(--amber-ink); cursor:pointer; touch-action:manipulation;
+  }
+  .skel{ border-radius:24px; background:linear-gradient(90deg,var(--card) 25%,rgba(255,255,255,.08) 50%,var(--card) 75%);
+    background-size:200% 100%; animation:shimmer 1.2s linear infinite; }
+  .skel.hero{ height:210px; }
+  .skel.line{ height:66px; }
+  @keyframes shimmer{ to{ background-position:-200% 0; } }
+
+  /* 푸터 */
+  footer{
+    display:flex; align-items:center; gap:10px; padding:6px 24px 4px; color:var(--dim2); font-size:11.5px; font-weight:600;
+  }
+  footer .rule{ flex:1; height:1px; background:rgba(255,255,255,.12); }
+
+  /* 하단 코스 탭 */
+  .tabsbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:20; display:flex; justify-content:center;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .tabs{
+    display:flex; gap:4px; width:100%; max-width:412px;
+    background:rgba(13,18,32,.82); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    border:1px solid var(--glass-line); border-radius:999px; padding:5px;
+  }
+  .tabs button{
+    flex:1; min-height:46px; font:inherit; font-size:clamp(12.5px,3.2vw,14.5px); font-weight:800;
+    border-radius:999px; border:0; background:transparent; color:var(--dim);
+    cursor:pointer; touch-action:manipulation; padding:6px 4px;
+  }
+  .tabs button.on{ background:var(--amber); color:var(--amber-ink); }
+  .tabs button:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+
+  .hint{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    text-align:center; font-size:11.5px; color:var(--dim2); padding:2px 16px 0; font-weight:600;
+  }
+  .hint svg{ flex:none; opacity:.7; }
+
+  @keyframes slideL{ from{ transform:translateX(24px); opacity:.3; } to{ transform:none; opacity:1; } }
+  @keyframes slideR{ from{ transform:translateX(-24px); opacity:.3; } to{ transform:none; opacity:1; } }
+  main.slide-l{ animation:slideL .28s cubic-bezier(.32,.72,0,1); }
+  main.slide-r{ animation:slideR .28s cubic-bezier(.32,.72,0,1); }
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{ animation:none !important; transition:none !important; }
+  }
+
+  /* 넓은 화면(1024px 이상) = 전광판(디스플레이) 모드: 가운데 정렬은 유지하되 히어로를 더 크게 */
+  @media (min-width:1024px){
+    .app{ max-width:600px; }
+    .leadnum{ font-size:120px; }
+    .leadlabel{ font-size:23px; }
+    .hero{ padding:32px 30px 28px; border-radius:32px; }
+    .badge .broute{ font-size:27px; }
+    .badge .btype{ font-size:12px; }
+    .whotext{ font-size:21px; }
+    .because{ font-size:16px; }
+    .stop{ font-size:25px; }
+  }
+
+  /* 당겨서 새로고침 표시기 */
+  .ptr{
+    position:fixed; left:50%; top:calc(env(safe-area-inset-top) + 10px); z-index:30;
+    width:36px; height:36px; border-radius:50%;
+    background:var(--glass); border:1px solid var(--glass-line);
+    backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+    display:flex; align-items:center; justify-content:center; color:var(--amber);
+    opacity:0; transform:translate(-50%,-40px); pointer-events:none;
+    transition:opacity .15s ease, transform .2s ease;
+  }
+  .ptr.show{ opacity:1; transform:translate(-50%,10px); }
+  .ptr.ready{ color:var(--green); }
+  .ptr.spin svg{ animation:spin .7s linear infinite; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="glow2"></div>
+  <div class="ptr" id="ptr" aria-hidden="true">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v6h-6"/></svg>
+  </div>
+  <div class="app">
+    <header>
+      <div class="loc">
+        <div class="locrow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div class="stop" id="stop">불러오는 중…</div>
+        </div>
+        <div class="course" id="course"></div>
+      </div>
+      <div class="hmeta">
+        <div class="clockwrap">
+          <div class="clock num" id="clock">--:--</div>
+          <div class="age" id="age"></div>
+        </div>
+        <button type="button" class="refresh" id="refresh" aria-label="새로고침">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v6h-6"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main id="board" aria-live="polite">
+      <div class="skel hero"></div>
+      <div class="skel line"></div>
+      <div class="skel line"></div>
+    </main>
+
+    <div class="hint" id="hint">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      좌우로 밀어서 코스 이동
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+
+    <footer id="foot">
+      <div class="rule"></div>
+      <div id="footText">경기도·서울 버스정보 · 30초마다 갱신</div>
+      <div class="rule"></div>
+    </footer>
+  </div>
+
+  <nav class="tabsbar" aria-label="코스"><div class="tabs" id="tabs"></div></nav>
+
+<script>
+  var REFRESH = 30000, STALE = 45000, OLD = 75;      // OLD 초 넘으면 화면을 바래게
+  var current = null, commutes = [], cache = {}, pending = {}, fetchedAt = 0;
+
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function tick() { var d = new Date(); document.getElementById('clock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function setSpin(on) { document.getElementById('refresh').classList.toggle('spin', !!on); }
+  document.getElementById('footText').textContent = '경기도·서울 버스정보 · ' + Math.round(REFRESH / 1000) + '초마다 갱신';
+
+  // 언제 받은 정보인지 1초마다 갱신. 오래되면 화면을 바래게 해서 "이건 지금 값이 아니다"를 보여준다
+  function ageTick() {
+    var el = document.getElementById('age');
+    if (!fetchedAt) { el.textContent = ''; return; }
+    var s = Math.floor((Date.now() - fetchedAt) / 1000);
+    el.textContent = s < 60 ? s + '초 전' : Math.floor(s / 60) + '분 전';
+    document.getElementById('board').classList.toggle('stale', s > OLD);
+  }
+
+  var CLOCK_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>';
+  var PIN_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+
+  // 노선 종류 — 서울 지선(7xxx)=초록, 간선(3자리)=파랑, 광역·직행좌석=빨강
+  function routeType(route) {
+    var r = String(route || '');
+    if (/^7\d{3}$/.test(r)) return { cls: 'green', label: '지선' };
+    if (/^\d{4}(-\d)?$/.test(r) || /^[A-Z]\d{4}$/.test(r)) return { cls: 'red', label: '광역' };
+    if (/^\d{3}$/.test(r)) return { cls: 'blue', label: '간선' };
+    return { cls: '', label: '버스' };
+  }
+
+  function saveTabs() { try { localStorage.setItem('bus_tabs', JSON.stringify(commutes)); } catch (e) {} }
+  function loadTabs() { try { return JSON.parse(localStorage.getItem('bus_tabs') || '[]') || []; } catch (e) { return []; } }
+  function hintSeen() {
+    try {
+      var n = Number(localStorage.getItem('bus_hint') || 0) + 1;
+      localStorage.setItem('bus_hint', n);
+      if (n > 3) { var h = document.getElementById('hint'); if (h) h.remove(); }
+    } catch (e) {}
+  }
+
+  function renderTabs() {
+    var el = document.getElementById('tabs');
+    if (el.childElementCount !== commutes.length) {
+      el.innerHTML = '';
+      commutes.forEach(function (name) {
+        var btn = document.createElement('button');
+        btn.type = 'button'; btn.textContent = name; btn.setAttribute('data-name', name);
+        btn.addEventListener('click', function () { selectTab(name); });
+        el.appendChild(btn);
+      });
+    }
+    Array.prototype.forEach.call(el.children, function (btn) {
+      var on = btn.getAttribute('data-name') === current;
+      btn.className = on ? 'on' : '';
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function renderSkeleton() {
+    document.getElementById('stop').textContent = '불러오는 중…';
+    document.getElementById('board').innerHTML =
+      '<div class="skel hero"></div><div class="skel line"></div><div class="skel line"></div>';
+  }
+
+  function renderError(msg) {
+    document.getElementById('stop').textContent = '연결 안 됨';
+    document.getElementById('board').innerHTML =
+      '<div class="empty"><div class="etitle">버스 정보를 못 받았어요</div>'
+      + '인터넷 연결을 확인하고 다시 눌러주세요'
+      + '<br><button type="button" class="bigbtn" id="retry">다시 시도</button></div>';
+    var r = document.getElementById('retry');
+    if (r) r.onclick = function () { fetchBoard(current); };
+    if (msg) try { console.log('bus error:', msg); } catch (e) {}
+  }
+
+  // 화면에 쓰는 시간은 전부 '출발까지' = 도착 - 걷는 시간 (도보 시간이 없는 코스는 도착까지)
+  function leaveMin(r, b, ageSec) {
+    if (r.min == null) return null;
+    var m = r.min - Math.floor((ageSec || 0) / 60);     // 저장본이면 흐른 시간만큼 줄여서 보여준다
+    return m - (b.walkMin || 0);
+  }
+
+  function statusOf(r, leave) {
+    if (r.seats === 0) return { cls: 'full', pill: '만석 · 못 탈 수 있어요' };
+    if (leave == null) return { cls: '', pill: r.waiting ? '아직 출발 전' : '도착 정보 없음' };
+    if (leave < 0) return { cls: '', pill: '이미 지나갔어요' };
+    if (leave <= 3) return { cls: 'go', pill: '지금 나가세요' };
+    if (leave <= 6) return { cls: 'soon', pill: '곧 준비하세요' };
+    return { cls: '', pill: '여유 있어요' };
+  }
+
+  function heroHTML(r, b, leave) {
+    var st = statusOf(r, leave);
+    var type = routeType(r.route);
+
+    var lead = (leave == null)
+      ? '<div class="lead none"><span class="leadnum">' + esc(r.waiting ? '아직 출발 전' : '정보 없음') + '</span></div>'
+      : '<div class="lead"><span class="leadnum num">' + (leave < 0 ? '0' : leave) + '</span><span class="leadlabel">'
+        + (leave < 0 ? '이미 놓쳤어요' : '분 뒤 출발') + '</span></div>';
+
+    var seat = '';
+    if (r.seats === 0) seat = '<span class="seatfull"> · 만석</span>';
+    else if (r.seats != null) seat = '<span> · 빈자리 ' + r.seats + '석' + (r.seats <= 3 ? ' (거의 참)' : '') + '</span>';
+
+    var because = '';
+    if (r.min != null) {
+      var parts = [];
+      parts.push('<b>' + r.min + '분</b> 도착');
+      if (r.stopsAway) parts.push('<b>' + esc(r.stopsAway) + '</b>정거장 전');
+      if (r.next != null) parts.push('다음차 ' + r.next + '분');
+      because = CLOCK_SVG + ' ' + parts.join('<span class="sep">·</span>');
+    } else if (r.where) {
+      because = PIN_SVG + ' ' + esc(r.where);
+    }
+
+    var denom = Math.max((b.leadMin || 0), 8);
+    var pct = leave == null ? 4 : Math.max(4, Math.min(100, Math.round((1 - leave / denom) * 100)));
+
+    return '<div class="hero' + (st.cls ? ' ' + st.cls : '') + '">'
+      + '<div class="herotop">'
+      + '<div class="pill' + (st.cls ? ' ' + st.cls : '') + '"><span class="dot"></span>' + esc(st.pill) + '</div>'
+      + '<div class="live">' + CLOCK_SVG + '실시간</div>'
+      + '</div>'
+      + lead
+      + '<div class="who">'
+      + '<div class="badge' + (type.cls ? ' ' + type.cls : '') + '"><span class="btype">' + esc(type.label) + '</span><span class="broute">' + esc(r.route) + '</span></div>'
+      + '<div class="whotext">' + esc(r.dest || r.where || '') + seat + '</div>'
+      + '</div>'
+      + (because ? '<div class="because">' + because + '</div>' : '')
+      + '<div class="progress"><div class="progressfill" style="width:' + pct + '%"></div></div>'
+      + '</div>';
+  }
+
+  function lineHTML(r, b, leave) {
+    var type = routeType(r.route);
+    var val;
+    if (leave == null) val = '<div class="valpill none">' + (r.waiting ? '아직 출발 전' : '정보 없음') + '</div>';
+    else if (leave < 0) val = '<div class="valpill none">놓쳤어요</div>';
+    else val = '<div class="valpill num">' + (leave < 0 ? 0 : leave) + '<small>분 뒤</small></div>';
+
+    var sub = '';
+    if (r.seats === 0) sub = '만석';
+    else if (r.seats != null) sub = '빈자리 ' + r.seats + '석';
+    if (r.stopsAway) sub += (sub ? ' · ' : '') + esc(r.stopsAway) + '정거장 전';
+    if (r.next != null) sub += (sub ? ' · ' : '') + '다음차 ' + r.next + '분';
+    if (r.extra) sub += (sub ? ' · ' : '') + '대체노선';
+    if (!sub && r.min != null) sub = '도착 ' + r.min + '분';
+
+    return '<div class="line' + (r.extra ? ' extra' : '') + (leave == null || leave < 0 ? ' wait' : '') + '">'
+      + '<div class="badgeoutline' + (type.cls ? ' ' + type.cls : '') + '"><span class="btype">' + esc(type.label) + '</span><span class="broute">' + esc(r.route) + '</span></div>'
+      + '<div class="txt">' + esc(r.dest || r.where || '') + '<span>' + sub + '</span></div>'
+      + val + '</div>';
+  }
+
+  function renderBoard(b, ageSec) {
+    document.getElementById('stop').textContent = b.stop || '정류장';
+    document.getElementById('course').textContent = (b.commute || '')
+      + (b.walkMin ? ' · 도보 ' + b.walkMin + '분' : '') + (b.displayOnly ? ' · 확인용' : '');
+
+    if (!b.rows || !b.rows.length) {
+      document.getElementById('board').innerHTML =
+        '<div class="empty"><div class="etitle">지금은 도착 정보가 없어요</div>운행 전이거나 막차가 지났어요<br>주말·공휴일이면 운행하지 않을 수 있어요</div>';
+      return;
+    }
+
+    // 탈 수 있는 첫 차를 주인공으로. 이미 놓쳤거나 만석인 차는 뒤로 미룬다
+    var rows = b.rows.map(function (r) { return { r: r, leave: leaveMin(r, b, ageSec) }; });
+    var pick = -1;
+    for (var i = 0; i < rows.length; i++) {
+      var x = rows[i];
+      if (x.r.extra || x.leave == null) continue;
+      if (x.leave < 0 || x.r.seats === 0) continue;
+      pick = i; break;
+    }
+    if (pick === -1) for (var j = 0; j < rows.length; j++) { if (!rows[j].r.extra) { pick = j; break; } }
+    if (pick === -1) pick = 0;
+
+    var html = heroHTML(rows[pick].r, b, rows[pick].leave);
+    rows.forEach(function (x, k) { if (k !== pick) html += lineHTML(x.r, b, x.leave); });
+    document.getElementById('board').innerHTML = html;
+  }
+
+  function selectTab(name) {
+    current = name;
+    renderTabs();
+    var c = cache[name];
+    if (c) { fetchedAt = c.at; renderBoard(c.data, Math.floor((Date.now() - c.at) / 1000)); ageTick(); }
+    else renderSkeleton();
+    if (!c || Date.now() - c.at > STALE) fetchBoard(name);
+  }
+
+  function fetchBoard(name) {
+    var key = name || '__auto__';
+    if (pending[key]) return;
+    pending[key] = true;
+    if (name === current || current === null) setSpin(true);
+    google.script.run.withSuccessHandler(function (b) {
+      pending[key] = false;
+      cache[b.commute] = { data: b, at: Date.now() };
+      var first = !commutes.length;
+      if (first || !commutes.length) { commutes = b.commutes || []; saveTabs(); }
+      if (current === null) current = b.commute;
+      renderTabs();
+      if (b.commute === current) { fetchedAt = Date.now(); renderBoard(b, 0); ageTick(); setSpin(false); }
+      if (first) commutes.forEach(function (n) { if (n !== b.commute) fetchBoard(n); });
+    }).withFailureHandler(function (e) {
+      pending[key] = false;
+      if (name === current || current === null) { setSpin(false); renderError(e && e.message ? e.message : e); }
+    }).getBoard(name);
+  }
+
+  function stepTab(delta) {
+    if (!commutes.length || !current) return;
+    var i = commutes.indexOf(current);
+    if (i === -1) return;
+    var next = commutes[(i + delta + commutes.length) % commutes.length];
+    if (next === current) return;
+    var board = document.getElementById('board');
+    board.classList.remove('slide-l', 'slide-r');
+    void board.offsetWidth;
+    board.classList.add(delta > 0 ? 'slide-l' : 'slide-r');
+    selectTab(next);
+  }
+  // 좌우 스와이프(코스 이동) + 당겨서 새로고침. 한 손가락 제스처를 시작 방향으로 구분해서 서로 안 겹치게 한다
+  (function () {
+    var x0 = null, y0 = null, moved = false;
+    var ptrEl = document.getElementById('ptr');
+    var PTR_THRESH = 70;          // 이만큼 당기면 손을 떼는 순간 새로고침
+    var PTR_MAX = 96;             // 표시기가 더 안 내려가는 한계
+    var PTR_RESIST = 0.5;         // 저항: 실제 손가락 이동량의 절반만 화면에 반영
+    var ptrEligible = false, ptrActive = false, ptrPull = 0;
+
+    function scrollTop() { return (document.scrollingElement || document.documentElement).scrollTop; }
+    function setPtrVisual(pull) {
+      if (!ptrEl) return;
+      ptrEl.style.transform = 'translate(-50%,' + (-40 + Math.min(PTR_MAX, pull)) + 'px)';
+      ptrEl.classList.toggle('show', pull > 4);
+      ptrEl.classList.toggle('ready', pull >= PTR_THRESH);
+    }
+    function resetPtrVisual() {
+      if (!ptrEl) return;
+      ptrEl.style.transform = '';
+      ptrEl.classList.remove('show', 'ready');
+    }
+
+    document.body.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) { x0 = null; return; }
+      x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; moved = false;
+      ptrEligible = scrollTop() <= 0;   // 맨 위에서 시작할 때만 당겨서 새로고침 허용
+      ptrActive = false; ptrPull = 0;
+    }, { passive: true });
+
+    document.body.addEventListener('touchmove', function (e) {
+      if (x0 == null || e.touches.length !== 1) return;
+      var dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+
+      // 아래로 당기는 제스처면 코스 스와이프 대신 당겨서 새로고침으로 처리
+      if (ptrEligible && !moved && !ptrActive && dy > 8 && Math.abs(dy) > Math.abs(dx)) ptrActive = true;
+      if (ptrActive) { ptrPull = Math.max(0, (dy - 8) * PTR_RESIST); setPtrVisual(ptrPull); return; }
+
+      if (!moved && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6) { moved = true; stepTab(dx < 0 ? 1 : -1); }
+    }, { passive: true });
+
+    document.body.addEventListener('touchend', function () {
+      var trigger = ptrActive && ptrPull >= PTR_THRESH;
+      ptrActive = false; ptrEligible = false;
+      resetPtrVisual();
+      if (trigger && ptrEl) {
+        ptrEl.classList.add('show', 'spin');
+        fetchBoard(current);   // 기존 수동 새로고침과 동일한 경로
+        setTimeout(function () { ptrEl.classList.remove('show', 'spin'); }, 1200);
+      }
+      x0 = null;
+    }, { passive: true });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') stepTab(1);
+      else if (e.key === 'ArrowLeft') stepTab(-1);
+    });
+  })();
+
+  // 첫 조회가 실패해도 탭은 남아 있도록 저장해둔 목록을 먼저 그린다
+  commutes = loadTabs();
+  if (commutes.length) renderTabs();
+  hintSeen();
+  document.getElementById('refresh').addEventListener('click', function () { fetchBoard(current); });
+  tick(); setInterval(tick, 5000);
+  ageTick(); setInterval(ageTick, 1000);
+  fetchBoard(null);
+  setInterval(function () { if (!document.hidden) fetchBoard(current); }, REFRESH);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) fetchBoard(current); });
+</script>
+</body>
+</html>
