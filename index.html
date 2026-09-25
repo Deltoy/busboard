@@ -9,6 +9,7 @@
   var q = new URLSearchParams(location.search), api = q.get('api') || '', k = q.get('k') || '';
   try {
     if (api) localStorage.setItem('bb_api', api); else api = localStorage.getItem('bb_api') || '';
+    if (/\/dev$/.test(api)) { api = ''; localStorage.removeItem('bb_api'); }   /* 편집기 테스트용 주소는 버리고 다시 설정 안내 */
     if (k) localStorage.setItem('bb_k', k); else k = localStorage.getItem('bb_k') || '';
     if (q.get('api') || q.get('k')) history.replaceState(null, '', location.pathname);   /* 주소창에서 암호 숨기기 */
   } catch (e) {}
