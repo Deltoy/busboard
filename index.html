@@ -499,7 +499,16 @@
       + val + '</div>';
   }
 
+  /* 0929 행선지 이름 대신 '어느 방면'이 한눈에 (출근: 9711·9700 = 강남, 1000·1200 = 서울역). 차 정보가 없으면 빈자리·만석은 안 보여 줌 (새벽에 '만석'으로 뜨던 것) */
+  var DEST_LABEL = { '출근': { '9711': '강남 방면 · 양재', '9700': '강남 방면 · 양재', '1000': '서울역 방면 · 숭례문', '1200': '서울역 방면 · 숭례문' } };
+  var _curCommute = '';
+  function tidyRow(r) {
+    var m = DEST_LABEL[_curCommute] && DEST_LABEL[_curCommute][String(r.route)];
+    if (m && !r._lab) { r._lab = 1; r.dest = m; }
+    if (r.min == null) r.seats = null;
+  }
   function renderBoard(b, ageSec) {
+    _curCommute = b.commute || '';
     document.getElementById('stop').textContent = b.stop || '정류장';
     document.getElementById('course').textContent = (b.commute || '')
       + (b.walkMin ? ' · 도보 ' + b.walkMin + '분' : '') + (b.displayOnly ? ' · 확인용' : '');
@@ -511,6 +520,7 @@
     }
 
     // 탈 수 있는 첫 차를 주인공으로. 이미 놓쳤거나 만석인 차는 뒤로 미룬다
+    b.rows.forEach(tidyRow);
     var rows = b.rows.map(function (r) { return { r: r, leave: leaveMin(r, b, ageSec) }; });
     var pick = -1;
     for (var i = 0; i < rows.length; i++) {
