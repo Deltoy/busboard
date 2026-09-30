@@ -185,6 +185,9 @@
   .hero.go .progressfill{ background:var(--green); }
 
   /* 리스트 카드 — 히어로와 같은 유리질감 */
+  .hero.fav{ outline:3px solid #FFD54F; outline-offset:-3px; }
+  .line.fav{ outline:2px solid #FFD54F; outline-offset:-2px; }
+  .hero,.line{ cursor:pointer; }
   .line{
     display:flex; align-items:center; gap:12px; border-radius:20px; padding:13px 14px;
     background:var(--glass); border:1px solid var(--glass-line);
@@ -420,20 +423,23 @@
     if (msg) try { console.log('bus error:', msg); } catch (e) {}
   }
 
-  // 화면에 쓰는 시간은 전부 '출발까지' = 도착 - 걷는 시간 (도보 시간이 없는 코스는 도착까지)
+  // 0930 단순화: 화면의 시간은 전부 '버스가 정류장에 도착하기까지' (출발 계산 없음)
   function leaveMin(r, b, ageSec) {
     if (r.min == null) return null;
-    var m = r.min - Math.floor((ageSec || 0) / 60);     // 저장본이면 흐른 시간만큼 줄여서 보여준다
-    return m - (b.walkMin || 0);
+    return r.min - Math.floor((ageSec || 0) / 60);     // 저장본이면 흐른 시간만큼 줄여서 보여준다
   }
+  function clockAt(min) { var d = new Date(Date.now() + min * 60000); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+  var FAV_KEY = 'bus_fav_';
+  function favRoute(c) { try { return localStorage.getItem(FAV_KEY + c) || ''; } catch (e) { return ''; } }
+  function toggleFav(route) { try { var k = FAV_KEY + _curCommute; if (localStorage.getItem(k) === route) localStorage.removeItem(k); else localStorage.setItem(k, route); } catch (e) {} var c = cache[current]; if (c) renderBoard(c.data, Math.floor((Date.now() - c.at) / 1000)); }
 
   function statusOf(r, leave) {
     if (r.seats === 0) return { cls: 'full', pill: '만석 · 못 탈 수 있어요' };
     if (leave == null) return { cls: '', pill: r.waiting ? '아직 출발 전' : '도착 정보 없음' };
     if (leave < 0) return { cls: '', pill: '이미 지나갔어요' };
-    if (leave <= 3) return { cls: 'go', pill: '지금 나가세요' };
-    if (leave <= 6) return { cls: 'soon', pill: '곧 준비하세요' };
-    return { cls: '', pill: '여유 있어요' };
+    if (leave <= 3) return { cls: 'go', pill: '곧 도착' };
+    if (leave <= 6) return { cls: 'soon', pill: '거의 다 왔어요' };
+    return { cls: '', pill: '오는 중' };
   }
 
   function heroHTML(r, b, leave) {
@@ -443,7 +449,7 @@
     var lead = (leave == null)
       ? '<div class="lead none"><span class="leadnum">' + esc(r.waiting ? '아직 출발 전' : '정보 없음') + '</span></div>'
       : '<div class="lead"><span class="leadnum num">' + (leave < 0 ? '0' : leave) + '</span><span class="leadlabel">'
-        + (leave < 0 ? '이미 놓쳤어요' : '분 뒤 출발') + '</span></div>';
+        + (leave < 0 ? '이미 놓쳤어요' : '분 뒤 도착 · ' + clockAt(leave)) + '</span></div>';
 
     var seat = '';
     if (r.seats === 0) seat = '<span class="seatfull"> · 만석</span>';
@@ -452,9 +458,8 @@
     var because = '';
     if (r.min != null) {
       var parts = [];
-      parts.push('<b>' + r.min + '분</b> 도착');
       if (r.stopsAway) parts.push('<b>' + esc(r.stopsAway) + '</b>정거장 전');
-      if (r.next != null) parts.push('다음차 ' + r.next + '분');
+      if (r.next != null) parts.push('다음 버스 <b>' + r.next + '분 뒤</b> (' + clockAt(r.next) + ')');
       because = CLOCK_SVG + ' ' + parts.join('<span class="sep">·</span>');
     } else if (r.where) {
       because = PIN_SVG + ' ' + esc(r.where);
@@ -463,7 +468,7 @@
     var denom = Math.max((b.leadMin || 0), 8);
     var pct = leave == null ? 4 : Math.max(4, Math.min(100, Math.round((1 - leave / denom) * 100)));
 
-    return '<div class="hero' + (st.cls ? ' ' + st.cls : '') + '">'
+    return '<div class="hero' + (st.cls ? ' ' + st.cls : '') + (favRoute(_curCommute) === String(r.route) ? ' fav' : '') + '" onclick="toggleFav(\'' + esc(String(r.route)) + '\')" title="누르면 이 버스 고정/해제">'
       + '<div class="herotop">'
       + '<div class="pill' + (st.cls ? ' ' + st.cls : '') + '"><span class="dot"></span>' + esc(st.pill) + '</div>'
       + '<div class="live">' + CLOCK_SVG + '실시간</div>'
@@ -483,17 +488,16 @@
     var val;
     if (leave == null) val = '<div class="valpill none">' + (r.waiting ? '아직 출발 전' : '정보 없음') + '</div>';
     else if (leave < 0) val = '<div class="valpill none">놓쳤어요</div>';
-    else val = '<div class="valpill num">' + (leave < 0 ? 0 : leave) + '<small>분 뒤</small></div>';
+    else val = '<div class="valpill num">' + (leave < 0 ? 0 : leave) + '<small>분 뒤 · ' + clockAt(leave) + '</small></div>';
 
     var sub = '';
     if (r.seats === 0) sub = '만석';
     else if (r.seats != null) sub = '빈자리 ' + r.seats + '석';
     if (r.stopsAway) sub += (sub ? ' · ' : '') + esc(r.stopsAway) + '정거장 전';
-    if (r.next != null) sub += (sub ? ' · ' : '') + '다음차 ' + r.next + '분';
+    if (r.next != null) sub += (sub ? ' · ' : '') + '다음 ' + r.next + '분 뒤 (' + clockAt(r.next) + ')';
     if (r.extra) sub += (sub ? ' · ' : '') + '대체노선';
-    if (!sub && r.min != null) sub = '도착 ' + r.min + '분';
 
-    return '<div class="line' + (r.extra ? ' extra' : '') + (leave == null || leave < 0 ? ' wait' : '') + '">'
+    return '<div class="line' + (r.extra ? ' extra' : '') + (leave == null || leave < 0 ? ' wait' : '') + (favRoute(_curCommute) === String(r.route) ? ' fav' : '') + '" onclick="toggleFav(\'' + esc(String(r.route)) + '\')" title="누르면 이 버스를 맨 위에 고정">'
       + '<div class="badgeoutline' + (type.cls ? ' ' + type.cls : '') + '"><span class="btype">' + esc(type.label) + '</span><span class="broute">' + esc(r.route) + '</span></div>'
       + '<div class="txt">' + esc(r.dest || r.where || '') + '<span>' + sub + '</span></div>'
       + val + '</div>';
@@ -511,7 +515,7 @@
     _curCommute = b.commute || '';
     document.getElementById('stop').textContent = b.stop || '정류장';
     document.getElementById('course').textContent = (b.commute || '')
-      + (b.walkMin ? ' · 도보 ' + b.walkMin + '분' : '') + (b.displayOnly ? ' · 확인용' : '');
+      + (b.walkMin ? ' · 도보 ' + b.walkMin + '분 (시간은 버스 도착 기준)' : '') + (b.displayOnly ? ' · 확인용' : '');
 
     if (!b.rows || !b.rows.length) {
       document.getElementById('board').innerHTML =
@@ -531,6 +535,8 @@
     }
     if (pick === -1) for (var j = 0; j < rows.length; j++) { if (!rows[j].r.extra) { pick = j; break; } }
     if (pick === -1) pick = 0;
+    var fav = favRoute(_curCommute);   // 0930 탭해서 고정한 버스가 있으면 그 버스를 맨 위 큰 카드로
+    if (fav) for (var f = 0; f < rows.length; f++) { if (String(rows[f].r.route) === fav) { pick = f; break; } }
 
     var html = heroHTML(rows[pick].r, b, rows[pick].leave);
     rows.forEach(function (x, k) { if (k !== pick) html += lineHTML(x.r, b, x.leave); });
