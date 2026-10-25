@@ -76,6 +76,9 @@ button{font:inherit;color:inherit}
 .top h1 .logo{width:34px;height:34px;border-radius:10px;background:var(--pri-fill);color:#fff;display:grid;place-items:center;flex:none}
 .top h1 .logo .ic{width:20px;height:20px;stroke-width:1.8}
 .top .sub{color:var(--ink3);font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.loc{display:flex;align-items:center;gap:5px;min-height:44px;margin:-14px 0 2px;font-size:14px;color:var(--ink2);text-decoration:none;-webkit-tap-highlight-color:transparent}
+.loc .ic{width:15px;height:15px;flex:none;color:var(--pri)}.loc span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.loc .go{flex:none;color:var(--pri);font-weight:600;padding-left:4px}.loc[href]:hover span:not(.go){text-decoration:underline}
 .clock{text-align:right;line-height:1.1}
 .clock b{display:block;font-size:17px;font-weight:700;letter-spacing:-.01em}
 .clock small{font-size:12px;color:var(--ink3)}
@@ -173,10 +176,11 @@ button{font:inherit;color:inherit}
 <div class="app">
   <header class="top">
     <div class="tt"><h1><span class="logo"><svg class="ic" viewBox="0 0 24 24"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg></span><span id="stop">불러오는 중…</span></h1>
-      <div class="sub" id="course"></div></div>
+      </div>
     <div class="clock"><b class="num" id="clock">--:--</b><small id="age"></small></div>
     <button type="button" class="ib" id="refresh" aria-label="새로고침"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button>
   </header>
+  <a class="loc" id="course" target="_blank" rel="noopener"></a>
   <nav class="seg" id="tabs" aria-label="코스"></nav>
   <main id="board"></main><div id="toast" class="toast" role="status"></div>
   <footer class="foot"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span id="footText"></span></footer>
@@ -291,7 +295,9 @@ button{font:inherit;color:inherit}
   function renderBoard(b, ageSec) {
     _cur = b.commute || '';
     $('stop').textContent = String(b.stop || '정류장').replace(/\(중\)/g, '').replace(/\./g, ' · ');
-    $('course').textContent = b.walkMin ? '정류장까지 걸어서 ' + b.walkMin + '분' : (b.commute || '');
+    var loc = (b.where ? b.where + ' · ' : '') + (b.stopNo ? '정류장 ' + b.stopNo : '') || (b.walkMin ? '정류장까지 걸어서 ' + b.walkMin + '분' : '');   // 어느 쪽 정류장인지 + 지도
+    $('course').innerHTML = I.stops + '<span>' + esc(loc) + '</span>' + (b.pos ? '<span class="go">지도</span>' : '');
+    if (b.pos) $('course').href = 'https://map.kakao.com/link/map/' + encodeURIComponent(String(b.stop).replace(/\(중\)/g, '')) + ',' + b.pos[0] + ',' + b.pos[1]; else $('course').removeAttribute('href');
     if (!b.rows || !b.rows.length) { $('board').innerHTML = '<div class="card empty"><b>지금은 도착 정보가 없어요</b>운행 전이거나 막차가 지났어요. 주말 · 공휴일엔 안 다닐 수 있어요</div>'; return; }
     b.rows.forEach(tidyRow);
     var ag = Math.floor((ageSec || 0) / 60), rows = b.rows.map(function (r) { return { r: ag && r.next != null ? Object.assign({}, r, { next: Math.max(0, r.next - ag) }) : r, leave: leaveMin(r, b, ageSec) }; }), pick = -1;
