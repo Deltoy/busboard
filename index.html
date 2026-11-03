@@ -226,7 +226,7 @@ button{font:inherit;color:inherit}
     var key = commutes.join('\u0001'); el.hidden = commutes.length < 2;
     if (el.getAttribute('data-k') !== key) {
       el.setAttribute('data-k', key); el.innerHTML = '';
-      commutes.forEach(function (name) { var b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.setAttribute('data-name', name); b.addEventListener('click', function () { selectTab(name); }); el.appendChild(b); });
+      commutes.forEach(function (name) { var b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.setAttribute('data-name', name); b.addEventListener('click', function () { userPicked = true; selectTab(name); }); el.appendChild(b); });
     }
     Array.prototype.forEach.call(el.children, function (b) { var on = b.getAttribute('data-name') === current; b.className = on ? 'on' : ''; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
   }
@@ -313,6 +313,19 @@ button{font:inherit;color:inherit}
   }
   document.addEventListener('click', function (e) { var t = e.target.closest('[data-route]'); if (t) toggleFav(t.getAttribute('data-route')); });
   document.addEventListener('keydown', function (e) { var t = e.target.closest && e.target.closest('[data-route]'); if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleFav(t.getAttribute('data-route')); } });
+  /* 1103 MJ '내 위치를 인식해서 버스앱을 열면 내가 타려는 정류장이 바로' — 열 때 한 번, 700m 안에서 가장 가까운 정류장 탭으로 (직접 탭을 누르면 그대로) */
+  var geoTried = false, userPicked = false;
+  try { if (!localStorage.getItem('bus_fav_연대앞') && localStorage.getItem('bus_fav_환승')) localStorage.setItem('bus_fav_연대앞', localStorage.getItem('bus_fav_환승')); } catch (eM) {}   // 탭 이름 '환승' → '연대앞'
+  function geoDist(a, b, c, d) { var R = 6371000, r = Math.PI / 180, x = (d - b) * r * Math.cos((a + c) / 2 * r), y = (c - a) * r; return Math.sqrt(x * x + y * y) * R; }
+  function geoPick(poses) {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(function (p) {
+      var best = -1, bd = 1e12; poses.forEach(function (q, i) { if (!q) return; var d = geoDist(p.coords.latitude, p.coords.longitude, q[0], q[1]); if (d < bd) { bd = d; best = i; } });
+      if (best < 0 || bd > 700 || userPicked || !commutes[best]) return;
+      if (commutes[best] !== current) selectTab(commutes[best]);
+      var t = $('toast'); if (t) { t.textContent = '내 위치에서 가까운 정류장 · ' + commutes[best] + ' (' + Math.round(bd) + 'm)'; t.classList.add('show'); setTimeout(function () { t.classList.remove('show'); }, 2600); }
+    }, function () {}, { enableHighAccuracy: true, timeout: 7000, maximumAge: 60000 });
+  }
   function selectTab(name) {
     current = name; renderTabs();
     var c = cache[name];
@@ -332,6 +345,7 @@ button{font:inherit;color:inherit}
       if (b.commute === current) { offline = false; fetchedAt = Date.now(); renderBoard(b, 0); ageTick(); }
       setSpin(!!pending[current]);
       if (!prefetched) { prefetched = true; commutes.forEach(function (n) { if (n !== b.commute && !cache[n]) fetchBoard(n); }); }
+      if (!geoTried && b.poses) { geoTried = true; geoPick(b.poses); }
     }).withFailureHandler(function (e) {
       pending[key] = false;
       if (name === current || current === null) {
