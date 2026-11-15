@@ -306,7 +306,7 @@ button{font:inherit;color:inherit}
   function renderBoard(b, ageSec) {
     _cur = b.commute || '';
     $('stop').textContent = String(b.stop || '정류장').replace(/\(중\)/g, '').replace(/\./g, ' · ');
-    var loc = (b.where ? b.where + ' · ' : '') + (b.stopNo ? '정류장 ' + b.stopNo : '') || (b.walkMin ? '정류장까지 걸어서 ' + b.walkMin + '분' : '');   // 어느 쪽 정류장인지 + 지도
+    var loc = [b.where, b.stopNo ? '정류장 ' + b.stopNo : ''].filter(Boolean).join(' · ') || (b.walkMin ? '정류장까지 걸어서 ' + b.walkMin + '분' : '');   // 어느 쪽 정류장인지 + 지도
     $('course').innerHTML = I.stops + '<span>' + esc(loc) + '</span>' + (b.pos ? '<span class="go">지도</span>' : '');
     if (b.pos) $('course').href = 'https://map.kakao.com/link/map/' + encodeURIComponent(String(b.stop).replace(/\(중\)/g, '')) + ',' + b.pos[0] + ',' + b.pos[1]; else $('course').removeAttribute('href');
     if (b.notice) { $('board').innerHTML = '<div class="card empty"><b>' + esc(b.notice) + '</b></div>'; return; }
@@ -320,7 +320,7 @@ button{font:inherit;color:inherit}
     var others = rows.filter(function (x, k) { return k !== pick; });
     var fa = document.activeElement, fr = fa && fa.closest && fa.closest('[data-route]'), fRoute = fr && fr.getAttribute('data-route');
     $('board').innerHTML = '<div class="grid">' + heroHTML(rows[pick].r, b, rows[pick].leave)
-      + (others.length ? '<section class="card list"><div class="lhead"><span>다른 버스 ' + others.length + '대</span><span>도착까지</span></div>' + others.map(function (x) { return lineHTML(x.r, b, x.leave); }).join('') + '</section>' : '') + '</div>';
+      + (others.length ? '<section class="card list"><div class="lhead"><span>' + (rows[pick].r.type === 2 ? '다음 열차 ' : '다른 버스 ') + others.length + '대</span><span>도착까지</span></div>' + others.map(function (x) { return lineHTML(x.r, b, x.leave); }).join('') + '</section>' : '') + '</div>';
     if (fRoute) { var n = $('board').querySelector('[data-route="' + CSS.escape(fRoute) + '"]'); if (n) n.focus({ preventScroll: true }); }
   }
   document.addEventListener('click', function (e) { var t = e.target.closest('[data-route]'); if (t) toggleFav(t.getAttribute('data-route')); });
