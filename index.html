@@ -53,7 +53,7 @@
 :root{--bg:#F5F6F8;--card:#fff;--line:#EDEEF0;--line2:#E3E5E8;--ink:#111827;--ink2:#374151;--ink3:#6B7280;--pri:#155EEF;--pri-fill:#155EEF;--pri-bg:#EFF4FF;
   --ok:#067647;--ok-bg:#ECFDF3;--warn:#B54708;--warn-bg:#FFFAEB;--bad:#B42318;--bad-bg:#FEF3F2;
   --r-red:#D92D20;--r-blue:#2563EB;--r-green:#15803D;--r-gray:#6B7280;--sh:0 1px 3px rgba(0,0,0,.04);color-scheme:light dark}
-@media (prefers-color-scheme:dark){:root{--bg:#0B0D12;--card:#151821;--line:#232734;--line2:#2C3141;--ink:#F3F4F6;--ink2:#D1D5DB;--ink3:#9CA3AF;--pri:#7AA2FF;--pri-fill:#2563EB;--pri-bg:#1A2440;
+@media (prefers-color-scheme:dark){:root{--bg:#0B0D12;--card:#151821;--line:#232734;--line2:#363C4E;--ink:#F3F4F6;--ink2:#D1D5DB;--ink3:#9CA3AF;--pri:#7AA2FF;--pri-fill:#2563EB;--pri-bg:#1A2440;
   --ok:#47CD89;--ok-bg:#0F2A1D;--warn:#FDB022;--warn-bg:#2D2210;--bad:#F97066;--bad-bg:#2E1513;--sh:none}}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
@@ -63,7 +63,7 @@ button{font:inherit;color:inherit}
 .ic{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .num{font-variant-numeric:tabular-nums}
 :focus-visible{outline:2px solid var(--pri);outline-offset:2px}
-.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;padding:10px 16px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}.toast.show{opacity:1}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translate(-50%,-8px);z-index:60;max-width:calc(100% - 32px);padding:10px 18px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(17,24,39,.18);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,0)}
 .clock small.warn{color:var(--warn);font-weight:600}
 
 .app{max-width:1180px;margin:0 auto;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px calc(28px + env(safe-area-inset-bottom,0px))}
@@ -76,7 +76,7 @@ button{font:inherit;color:inherit}
 .top h1 .logo{width:34px;height:34px;border-radius:10px;background:var(--pri-fill);color:#fff;display:grid;place-items:center;flex:none}
 .top h1 .logo .ic{width:20px;height:20px;stroke-width:1.8}
 .top .sub{color:var(--ink3);font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.loc{display:flex;align-items:center;gap:5px;min-height:44px;margin:-14px 0 2px;font-size:14px;color:var(--ink2);text-decoration:none;-webkit-tap-highlight-color:transparent}
+.loc[hidden]{display:none}.loc{display:flex;align-items:center;gap:5px;min-height:44px;margin:-14px 0 2px;font-size:14px;color:var(--ink2);text-decoration:none;-webkit-tap-highlight-color:transparent}
 .loc .ic{width:15px;height:15px;flex:none;color:var(--pri)}.loc span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .loc .go{flex:none;color:var(--pri);font-weight:600;padding-left:4px}.loc[href]:hover span:not(.go){text-decoration:underline}
 .clock{text-align:right;line-height:1.1}
@@ -86,24 +86,45 @@ button{font:inherit;color:inherit}
 .ib{width:44px;height:44px;border:1px solid var(--line);border-radius:12px;background:var(--card);display:grid;place-items:center;cursor:pointer;color:var(--ink2);flex:none}
 .ib.spin .ic{animation:spin .9s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 /* 코스 (Toss 식 분절 버튼) */
-.seg{display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow-x:auto}
-.seg-row{display:flex;gap:4px;align-items:center;overflow-x:auto}.seg-lab{display:inline-flex;align-items:center;gap:4px;flex:none;padding:0 6px 0 8px;color:var(--ink3);font-size:13px;font-weight:700}.seg-lab svg{width:16px;height:16px}
-.seg button{flex:1 1 0;min-height:44px;padding:0 8px;border:0;border-radius:12px;background:none;color:var(--ink3);font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap}
-.seg button.on{background:var(--pri-bg);color:var(--pri);font-weight:700}
+.seg{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.seg-row{display:flex;gap:4px;align-items:center;padding:4px;background:var(--line);border-radius:16px;overflow-x:auto;scrollbar-width:none}.seg-row::-webkit-scrollbar{display:none}
+.seg-lab{display:inline-flex;align-items:center;gap:5px;flex:none;width:62px;padding-left:10px;color:var(--ink3);font-size:13px;font-weight:700}.seg-lab svg{width:16px;height:16px}
+.seg button{flex:1 1 0;min-height:44px;padding:0 12px;border:0;border-radius:12px;background:none;color:var(--ink2);font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap;transition:background .15s,color .15s}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--card);color:var(--pri);font-weight:700;box-shadow:0 1px 3px rgba(17,24,39,.1)}
+@media(prefers-color-scheme:dark){.seg button.on{background:var(--line2);box-shadow:none}}
+@media(min-width:1000px){.seg{flex-direction:row;gap:10px}.seg-row{flex:1 1 0;min-width:0}}
 /* 본문: 폰 = 한 줄 · 폴드 펼침·맥 = 큰 카드 | 목록 */
 .grid{display:grid;gap:12px;grid-template-columns:minmax(0,1fr)}
-@media(min-width:760px){.grid{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}}
-@media(min-width:760px) and (min-height:600px){   /* 폴드 펼침·맥북·전광판: 화면을 꽉 채움 (빈 공간 금지) */
- .app{display:flex;flex-direction:column;min-height:100dvh}
- #board{flex:1;display:flex;flex-direction:column}
- .grid{flex:1;align-items:stretch}
+@media(min-height:600px){.app:has(#board>.empty){display:flex;flex-direction:column;min-height:100dvh}.app:has(#board>.empty) #board{flex:1;display:flex;flex-direction:column}#board>.empty{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:clamp(15px,2.2vh,22px)}#board>.empty b{font-size:clamp(20px,4vh,40px)}}
+@media(min-height:600px){   /* 1124 화면 높이가 되면: 큰 카드가 남는 높이를 채우고, 숫자·시각·막대·칩을 한 덩어리로 세로 가운데 (빈 공간 금지) */
+ .app:has(.grid){display:flex;flex-direction:column;min-height:100dvh}
+ .app:has(.grid) #board{flex:1;display:flex;flex-direction:column}
+ .grid{flex:1;grid-template-rows:minmax(0,1fr) auto}
  .hero{display:flex;flex-direction:column}
- .hero .big{margin-top:auto}.hero .meta{margin-top:auto}
- .hero .big b{font-size:clamp(72px,min(34vh,22vw),320px)}
- .hero .big span{font-size:clamp(22px,4.5vh,40px)}
- .list{display:flex;flex-direction:column}.list .line{flex:1 1 0}
+ .hero>.core{margin-top:auto}.hero.hero>:last-child{margin-bottom:auto}
+ .hero .core{display:flex;flex-direction:column;align-items:center;text-align:center}
+ .hero .big{justify-content:center}
+ .hero .big b{font-size:clamp(88px,min(32vh,34vw,100vh - 680px),420px)}
+ .hero .big span{font-size:clamp(24px,4.2vh,48px)}
+ .hero .big.none b{font-size:clamp(36px,7vh,72px)}
+ .hero .at{font-size:clamp(16px,2.4vh,26px)}
+ .hero .trk{width:min(100%,760px);margin:clamp(14px,2.4vh,28px) auto 0}
+ .hero .meta{justify-content:center}
 }
-@media(min-width:1100px){.app{padding:24px 28px 20px}.line .txt b{font-size:18px}.line .val b{font-size:36px}.list .line .badge{height:40px;font-size:19px;width:112px}.hero{padding:28px}.hero .at{font-size:18px}}
+@media(min-width:760px) and (min-height:600px){   /* 폴드 펼침·맥북: 다음 차는 아래 타일 띠 (가운데 모음 → 줄 안 빈틈 없음) */
+ .grid{gap:14px}
+ .hero{padding:24px 28px}
+ .hero .core .pill{min-height:34px;padding:2px 16px;font-size:16px}.hero .core .pill i{width:9px;height:9px}
+ .hero .meta{margin-top:18px}.hero .chip{min-height:36px;padding:0 14px;font-size:15px}.hero .chip .ic{width:17px;height:17px}
+ .grid .list{display:flex;flex-wrap:wrap;gap:12px;padding:0;background:none;border:0;box-shadow:none;overflow:visible}
+ .list .lhead{flex-basis:100%;padding:0 4px;margin-bottom:-4px}
+ .list .line{flex:1 1 240px;justify-content:center;gap:16px;min-height:84px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--sh)}
+ .list .line{min-width:0}.list .line .txt{flex:0 1 auto}.grid .list .line .badge{width:auto;min-width:76px}.list .line .val{min-width:64px}
+ .list .line:hover{background:var(--bg)}
+}
+@media(min-width:760px) and (max-width:1299px) and (min-height:600px){.list .line{flex-basis:420px}}   /* 폴드 세로: 2개씩 → 이름이 안 잘림 */
+@media(min-width:1100px){.app{max-width:1440px;padding:24px 28px 20px}.line .txt b{font-size:18px}.line .val b{font-size:36px}.list .line .badge{height:40px;font-size:19px;width:112px}}
 .card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--sh)}
 .hero{padding:20px;cursor:pointer;position:relative;overflow:hidden}
 .hero .row1{display:flex;align-items:center;gap:8px;justify-content:space-between}
@@ -123,11 +144,18 @@ button{font:inherit;color:inherit}
 .dest{min-width:0;font-weight:600;font-size:15px}
 .dest small{display:block;font-size:13px;font-weight:500;color:var(--ink3);margin-top:1px}
 .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px}
-@media(max-width:400px){.chip .ic{display:none}}
+@media(max-width:400px){.chip{padding:0 7px;gap:3px}}
 .chip{display:inline-flex;align-items:center;gap:4px;min-height:30px;padding:0 9px;border-radius:999px;background:var(--bg);font-size:13px;color:var(--ink2);font-weight:500}
 .chip .ic{width:15px;height:15px;color:var(--ink3)}.chip b{color:var(--ink)}
 .chip.seat0{background:var(--bad-bg);color:var(--bad)}
 .hero.go .big b,.hero.go .big span{color:var(--ok)}.hero.soon .big b,.hero.soon .big span{color:var(--warn)}.hero.full .big b{color:var(--bad)}   /* 멀리서도 상태가 보이게 숫자 색 */
+.trk{margin-top:16px;color:var(--pri)}.hero.go .trk{color:var(--ok)}.hero.soon .trk{color:var(--warn)}.hero.full .trk{color:var(--bad)}
+.trk-bar{position:relative;height:8px;margin:0 17px;border-radius:99px;background:var(--line2)}
+.trk-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:inherit;background:currentColor;opacity:.85;transition:width .6s ease}
+.trk-car{position:absolute;top:50%;width:34px;height:34px;transform:translate(-50%,-50%);border-radius:50%;background:var(--card);border:2px solid currentColor;display:grid;place-items:center;transition:left .6s ease}.trk-car .ic{width:18px;height:18px;stroke-width:1.8}
+.trk-lab span{width:0;display:flex;justify-content:center;white-space:nowrap}.trk-lab{display:flex;justify-content:space-between;padding:0 17px;margin-top:12px;font-size:12px;color:var(--ink3);font-weight:500}
+.core .pill{margin-top:14px}
+.hero.go .trk-car{animation:near 1.6s ease-in-out infinite}@keyframes near{50%{box-shadow:0 0 0 7px color-mix(in srgb,currentColor 20%,transparent)}}   /* 제미나이 의견: 곧 도착이면 은은하게 맥박 */
 .fav-mark{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--pri);background:var(--pri-bg);border-radius:999px;padding:3px 9px}
 .fav-mark .ic{width:13px;height:13px}
 /* 목록 */
@@ -202,6 +230,8 @@ button{font:inherit;color:inherit}
     stops: '<svg class="ic" viewBox="0 0 24 24"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
     next: '<svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
     seat: '<svg class="ic" viewBox="0 0 24 24"><path d="M7 18v3"/><path d="M17 18v3"/><path d="M5 11V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v5"/><path d="M3 11h18v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    bus: '<svg class="ic" viewBox="0 0 24 24"><path d="M8 6v6"/><path d="M15 6v6"/><path d="M2 12h19.6"/><path d="M18 18h3s.5-1.7.8-2.8c.1-.4.2-.8.2-1.2 0-.4-.1-.8-.2-1.2l-1.4-5C20.1 6.8 19.1 6 18 6H4a2 2 0 0 0-2 2v10h3"/><circle cx="7" cy="18" r="2"/><path d="M9 18h5"/><circle cx="16" cy="18" r="2"/></svg>',
+    train: '<svg class="ic" viewBox="0 0 24 24"><path d="M8 3.1V7a4 4 0 0 0 8 0V3.1"/><path d="m9 15-1-1"/><path d="m15 15 1-1"/><path d="M9 19c-2.8 0-5-2.2-5-5v-4a8 8 0 0 1 16 0v4c0 2.8-2.2 5-5 5Z"/><path d="m8 19-2 3"/><path d="m16 19 2 3"/></svg>',
     pin: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>',
     live: '<svg class="ic" viewBox="0 0 24 24"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>'
   };
@@ -231,7 +261,7 @@ button{font:inherit;color:inherit}
     if (el.getAttribute('data-k') !== key) {
       el.setAttribute('data-k', key); el.innerHTML = '';
       /* 1115 MJ '출근 한 줄 퇴근 한 줄' — 서버 group(am·pm)으로 줄을 나눔, group 없으면 한 줄 */
-      var rows = [['am', '출근', I.sun], ['pm', '퇴근', I.moon], ['', '', '']].map(function (g) { return { g: g, names: commutes.filter(function (n, i) { return (groups[i] || '') === g[0]; }) }; }).filter(function (x) { return x.names.length; });
+      var rows = [['am', '아침', I.sun], ['pm', '저녁', I.moon], ['', '', '']].map(function (g) { return { g: g, names: commutes.filter(function (n, i) { return (groups[i] || '') === g[0]; }) }; }).filter(function (x) { return x.names.length; });
       rows.forEach(function (row) {
         var line = document.createElement('div'); line.className = 'seg-row';
         if (row.g[1]) { var lab = document.createElement('span'); lab.className = 'seg-lab'; lab.innerHTML = row.g[2] + '<span>' + row.g[1] + '</span>'; line.appendChild(lab); }
@@ -278,12 +308,20 @@ button{font:inherit;color:inherit}
     if (r.next != null) chips.push('<span class="chip">' + I.next + '<span>다음 차 <b>' + r.next + '분 뒤</b></span></span>');
     if (r.seats != null && r.seats > 0) chips.push('<span class="chip">' + I.seat + '<span>빈자리 <b>' + r.seats + '석</b></span></span>');
     if (r.min == null && r.where) chips.push('<span class="chip">' + I.stops + esc(r.where) + '</span>');
-    var showPill = leave != null && leave > 0 || r.seats === 0;   // 큰 글자가 이미 같은 말이면 알약은 숨김
+    var showPill = leave != null && leave > 0 && st.cls || r.seats === 0;   // '오는 중'은 숫자가 이미 말해서 숨김   // 큰 글자가 이미 같은 말이면 알약은 숨김
     return '<section class="card hero ' + st.cls + '" data-route="' + esc(String(r.route)) + '" role="button" tabindex="0" aria-pressed="' + fav + '" aria-label="' + esc(srLabel(r, leave, st)) + '">'
       + '<div class="row1"><div class="who">' + badge(r) + '<div class="dest">' + esc(r.dest || r.where || '') + '</div></div>' + (fav ? '<span class="fav-mark">' + I.pin + '고정</span>' : '') + '</div>'
-      + (showPill ? '<div style="margin-top:14px"><span class="pill ' + st.cls + '"><i></i>' + esc(st.pill) + '</span></div>' : '')
-      + big
+      + '<div class="core">' + (showPill ? '<span class="pill ' + st.cls + '"><i></i>' + esc(st.pill) + '</span>' : '') + big + '</div>'
+      + trackHTML(r, leave)
       + (chips.length ? '<div class="meta">' + chips.join('') + '</div>' : '') + '</section>';
+  }
+  /* 1124 남은 시간 막대 — 20분 전부터 버스(열차) 아이콘이 정류장 쪽으로 다가옴 */
+  var _heroLeave = null;
+  function trackHTML(r, leave) {
+    if (leave == null || leave < 0) return '';
+    var pct = Math.round(Math.max(4, Math.min(100, (1 - leave / 20) * 100)));
+    return '<div class="trk" aria-hidden="true"><div class="trk-bar"><i style="width:' + pct + '%"></i><span class="trk-car" style="left:' + pct + '%">' + (r.type === 2 ? I.train : I.bus) + '</span></div>'
+      + '<div class="trk-lab"><span>20분</span><span>10분</span><span>' + (r.type === 2 ? '역' : '정류장') + '</span></div></div>';
   }
   function lineHTML(r, b, leave) {
     var st = statusOf(r, leave), val;
@@ -295,6 +333,7 @@ button{font:inherit;color:inherit}
     if (r.min != null && r.stopsAway) sub.push(esc(r.stopsAway) + '정거장 전');
     if (r.next != null) sub.push('다음 차 ' + r.next + '분 뒤');
     if (r.seats != null && r.seats > 0) sub.push('빈자리 ' + r.seats + '석');
+    if (!sub.length && leave != null && _heroLeave != null && leave > _heroLeave) sub.push('위 ' + (r.type === 2 ? '열차' : '버스') + '보다 ' + (leave - _heroLeave) + '분 뒤');
     return '<div class="line ' + st.cls + (r.extra ? ' extra' : '') + (leave == null || leave < 0 ? ' wait' : '') + (favRoute(_cur) === String(r.route) ? ' fav' : '') + '" data-route="' + esc(String(r.route)) + '" role="button" tabindex="0" aria-pressed="' + (favRoute(_cur) === String(r.route)) + '" aria-label="' + esc(srLabel(r, leave, st)) + '">'
       + badge(r) + '<div class="txt"><b>' + esc(r.dest || r.where || '') + (r.extra ? '<em class="tag">예비</em>' : '') + '</b><span>' + sub.join(' · ') + '</span></div>' + val + '</div>';
   }
@@ -308,6 +347,7 @@ button{font:inherit;color:inherit}
     $('stop').textContent = String(b.stop || '정류장').replace(/\(중\)/g, '').replace(/\./g, ' · ');
     var loc = [b.where, b.stopNo ? '정류장 ' + b.stopNo : ''].filter(Boolean).join(' · ') || (b.walkMin ? '정류장까지 걸어서 ' + b.walkMin + '분' : '');   // 어느 쪽 정류장인지 + 지도
     $('course').innerHTML = I.stops + '<span>' + esc(loc) + '</span>' + (b.pos ? '<span class="go">지도</span>' : '');
+    $('course').hidden = !loc && !b.pos;
     if (b.pos) $('course').href = 'https://map.kakao.com/link/map/' + encodeURIComponent(String(b.stop).replace(/\(중\)/g, '')) + ',' + b.pos[0] + ',' + b.pos[1]; else $('course').removeAttribute('href');
     if (b.notice) { $('board').innerHTML = '<div class="card empty"><b>' + esc(b.notice) + '</b></div>'; return; }
     if (!b.rows || !b.rows.length) { $('board').innerHTML = '<div class="card empty"><b>지금은 도착 정보가 없어요</b>운행 전이거나 막차가 지났어요. 주말 · 공휴일엔 안 다닐 수 있어요</div>'; return; }
@@ -317,10 +357,12 @@ button{font:inherit;color:inherit}
     if (pick === -1) for (var j = 0; j < rows.length; j++) { if (!rows[j].r.extra) { pick = j; break; } }
     if (pick === -1) pick = 0;
     var fav = favRoute(_cur); if (fav) for (var f = 0; f < rows.length; f++) { if (String(rows[f].r.route) === fav) { pick = f; break; } }   // 고정한 버스가 있으면 그 버스
+    _heroLeave = rows[pick].leave;
+    $('footText').textContent = rows[pick].r.type === 2 ? '시간은 열차가 역에 오는 시각 · 열차를 누르면 맨 위에 고정돼요' : '시간은 버스가 정류장에 오는 시각 · 버스를 누르면 맨 위에 고정돼요';
     var others = rows.filter(function (x, k) { return k !== pick; });
     var fa = document.activeElement, fr = fa && fa.closest && fa.closest('[data-route]'), fRoute = fr && fr.getAttribute('data-route');
     $('board').innerHTML = '<div class="grid">' + heroHTML(rows[pick].r, b, rows[pick].leave)
-      + (others.length ? '<section class="card list"><div class="lhead"><span>' + (rows[pick].r.type === 2 ? '다음 열차 ' : '다른 버스 ') + others.length + '대</span><span>도착까지</span></div>' + others.map(function (x) { return lineHTML(x.r, b, x.leave); }).join('') + '</section>' : '') + '</div>';
+      + (others.length ? '<section class="card list n' + Math.min(others.length, 4) + '"><div class="lhead"><span>' + (rows[pick].r.type === 2 ? '다음 열차 ' : '다른 버스 ') + others.length + '대</span><span>누르면 위로</span></div>' + others.map(function (x) { return lineHTML(x.r, b, x.leave); }).join('') + '</section>' : '') + '</div>';
     if (fRoute) { var n = $('board').querySelector('[data-route="' + CSS.escape(fRoute) + '"]'); if (n) n.focus({ preventScroll: true }); }
   }
   document.addEventListener('click', function (e) { var t = e.target.closest('[data-route]'); if (t) toggleFav(t.getAttribute('data-route')); });
